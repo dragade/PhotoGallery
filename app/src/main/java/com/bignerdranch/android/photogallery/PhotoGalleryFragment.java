@@ -27,7 +27,7 @@ import android.widget.ImageView;
 import android.widget.SearchView;
 import android.widget.Toast;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class PhotoGalleryFragment extends Fragment {
@@ -93,12 +93,12 @@ public class PhotoGalleryFragment extends Fragment {
     }
   }
 
-  private class FetchItemsTask extends AsyncTask<Void,Void,List<GalleryItem>> {
+  private class FetchItemsTask extends AsyncTask<Void,Void,FlickrFetchr.Results> {
     @Override
-    protected List<GalleryItem> doInBackground(Void... params) {
+    protected FlickrFetchr.Results doInBackground(Void... params) {
       Activity activity = getActivity();
       if (activity == null)
-        return new ArrayList<GalleryItem>();
+        return new FlickrFetchr.Results(Collections.<GalleryItem>emptyList(), 0);
 
       String query = PreferenceManager.getDefaultSharedPreferences(activity)
           .getString(FlickrFetchr.PREF_SEARCH_QUERY, null);
@@ -110,13 +110,13 @@ public class PhotoGalleryFragment extends Fragment {
     }
 
     @Override
-    protected void onPostExecute(List<GalleryItem> items) {
-      mItems = items;
+    protected void onPostExecute(FlickrFetchr.Results results) {
+      mItems = results.items;
       setupAdapter();
 
       //display the toast of num results found
-      String msg = String.format("Found %d results", mFlickrFetchr.getTotalResultsReadLast());
-      Toast.makeText(getActivity(), msg, Toast.LENGTH_SHORT).show();
+      String msg = String.format("Found %d results", results.total);
+      Toast.makeText(getActivity(), msg, Toast.LENGTH_LONG).show();
     }
   }
 

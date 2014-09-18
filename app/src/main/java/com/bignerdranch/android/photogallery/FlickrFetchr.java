@@ -29,15 +29,19 @@ public class FlickrFetchr {
   private static final String METHOD_SEARCH = "flickr.photos.search";
   private static final String PARAM_TEXT = "text";
 
-  public int getTotalResultsReadLast() {
-    return mTotalResultsReadLast;
-  }
-
   private static final String XML_PHOTO = "photo";
   private static final String XML_PHOTOS = "photos";
   private static final String XML_PHOTOS_TOTAL = "total";
 
-  private int mTotalResultsReadLast = 0;
+  public static class Results {
+    public final List<GalleryItem> items;
+    public final int total;
+
+    public Results(List<GalleryItem> items, int total) {
+      this.items = items;
+      this.total = total;
+    }
+  }
 
   public byte[] getUrlBytes(String urlSpec) throws IOException {
     URL url = new URL(urlSpec);
@@ -63,7 +67,7 @@ public class FlickrFetchr {
     return new String(getUrlBytes(urlSpec));
   }
 
-  public List<GalleryItem> downloadGalleryItems(String  url) {
+  public Results downloadGalleryItems(String  url) {
     try {
       String xmlString = getUrl(url);
       Log.i(TAG, "Received xml: " + xmlString);
@@ -76,10 +80,10 @@ public class FlickrFetchr {
     } catch (XmlPullParserException e) {
       Log.e(TAG, "Failed to parse items", e);
     }
-    return Collections.emptyList();
+    return new Results(Collections.<GalleryItem>emptyList(), 0);
   }
 
-  public List<GalleryItem> fetchItems() {
+  public Results fetchItems() {
     String url = Uri.parse(ENDPOINT).buildUpon()
         .appendQueryParameter("method", METHOD_GET_RECENT)
         .appendQueryParameter("api_key", API_KEY)
@@ -88,7 +92,7 @@ public class FlickrFetchr {
     return downloadGalleryItems(url);
   }
 
-  public List<GalleryItem> search(String query) {
+  public Results search(String query) {
     String url = Uri.parse(ENDPOINT).buildUpon()
         .appendQueryParameter("method", METHOD_SEARCH)
         .appendQueryParameter("api_key", API_KEY)
@@ -98,17 +102,17 @@ public class FlickrFetchr {
     return downloadGalleryItems(url);
   }
 
-  private ArrayList<GalleryItem> parseItems(XmlPullParser parser)
+  private Results parseItems(XmlPullParser parser)
       throws XmlPullParserException, IOException {
     ArrayList<GalleryItem> items = new ArrayList<GalleryItem>();
     int eventType = parser.next();
+    int total = 0;
     while (eventType != XmlPullParser.END_DOCUMENT) {
       if (eventType == XmlPullParser.START_TAG) {
         if (XML_PHOTOS.equals(parser.getName())) {
-          Log.d(TAG, "On xml photos " + parser.getAttributeCount() + " attributes");
           String totalValue = parser.getAttributeValue(null, XML_PHOTOS_TOTAL);
-          mTotalResultsReadLast = Integer.parseInt(totalValue);
-          Log.d(TAG, "There are " + mTotalResultsReadLast + " images.");
+          total = Integer.parseInt(totalValue);
+          Log.d(TAG, "There are " + total + " images.");
         }
         else if (XML_PHOTO.equals(parser.getName())) {
           String id = parser.getAttributeValue(null, "id");
@@ -124,6 +128,6 @@ public class FlickrFetchr {
 
       eventType = parser.next();
     }
-    return items;
+    return new Results(items, total);
   }
 }
