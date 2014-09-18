@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
+import android.support.v4.util.LruCache;
 import android.util.Log;
 
 import java.io.IOException;
@@ -28,6 +29,9 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
     void onThumbnailDownloaded(Token token, Bitmap thumbnail);
   }
 
+  private LruCache<String,Bitmap> mImageCache;
+
+
   public void setListener(Listener<Token> listener) {
     mListener = listener;
   }
@@ -35,6 +39,7 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
   public ThumbnailDownloader(Handler responseHandler) {
     super(TAG);
     mResponseHandler = responseHandler;
+    mImageCache = new LruCache<String, Bitmap>(100);
   }
 
   @SuppressLint("HandlerLeak")
@@ -46,8 +51,10 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
         if (msg.what == MESSAGE_DOWNLOAD) {
           @SuppressWarnings("unchecked")
           Token token = (Token) msg.obj;
-          Log.i(TAG, "Got a request for url: " + requestMap.get(token));
-          handleRequest(token);
+          if (requestMap.containsKey(token)) {
+            Log.i(TAG, "Got a request for url: " + requestMap.get(token));
+            handleRequest(token);
+          }
         }
       }
     };
@@ -66,10 +73,19 @@ public class ThumbnailDownloader<Token> extends HandlerThread {
       final String url = requestMap.get(token);
       if (url == null)
         return;
-      byte[] bitmapBytes = new FlickrFetchr().getUrlBytes(url);
-      final Bitmap bitmap = BitmapFactory
-          .decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
-      Log.i(TAG, "Bitmap created");
+
+      //check the cache
+      final Bitmap bitmap;
+      Bitmap bitmapFromCache = mImageCache.get(url);
+      if (bitmapFromCache == null) {
+        byte[] bitmapBytes = new FlickrFetchr().getUrlBytes(url);
+        bitmap = BitmapFactory.decodeByteArray(bitmapBytes, 0, bitmapBytes.length);
+        Log.i(TAG, "Bitmap created for " + url);
+        mImageCache.put(url, bitmap);
+      } else {
+        Log.i(TAG, "Bitmap loaded from cache for " + url);
+        bitmap = bitmapFromCache;
+      }
 
       mResponseHandler.post(new Runnable() {
         public void run() {
