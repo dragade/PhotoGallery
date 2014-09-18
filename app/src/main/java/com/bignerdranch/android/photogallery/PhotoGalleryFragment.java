@@ -5,6 +5,7 @@ import android.app.SearchManager;
 import android.app.SearchableInfo;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -24,6 +25,7 @@ import android.widget.ArrayAdapter;
 import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.SearchView;
+import android.widget.Toast;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +36,7 @@ public class PhotoGalleryFragment extends Fragment {
   GridView mGridView;
   List<GalleryItem> mItems;
   ThumbnailDownloader<ImageView> mThumbnailThread;
+  private FlickrFetchr mFlickrFetchr;
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
@@ -42,6 +45,7 @@ public class PhotoGalleryFragment extends Fragment {
     setHasOptionsMenu(true);
     updateItems();
 
+    mFlickrFetchr = new FlickrFetchr();
     mThumbnailThread = new ThumbnailDownloader<ImageView>(new Handler());
     mThumbnailThread.setListener(new ThumbnailDownloader.Listener<ImageView>() {
       public void onThumbnailDownloaded(ImageView imageView, Bitmap thumbnail) {
@@ -99,9 +103,9 @@ public class PhotoGalleryFragment extends Fragment {
       String query = PreferenceManager.getDefaultSharedPreferences(activity)
           .getString(FlickrFetchr.PREF_SEARCH_QUERY, null);
       if (query != null) {
-        return new FlickrFetchr().search(query);
+        return mFlickrFetchr.search(query);
       } else {
-        return new FlickrFetchr().fetchItems();
+        return mFlickrFetchr.fetchItems();
       }
     }
 
@@ -109,6 +113,10 @@ public class PhotoGalleryFragment extends Fragment {
     protected void onPostExecute(List<GalleryItem> items) {
       mItems = items;
       setupAdapter();
+
+      //display the toast of num results found
+      String msg = String.format("Found %d results", mFlickrFetchr.getTotalResultsReadLast());
+      Toast.makeText(getActivity(), msg, Toast.LENGTH_SHORT).show();
     }
   }
 
@@ -149,12 +157,16 @@ public class PhotoGalleryFragment extends Fragment {
 
   @Override
   public boolean onOptionsItemSelected(MenuItem item) {
+    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
     switch (item.getItemId()) {
       case R.id.menu_item_search:
-        getActivity().onSearchRequested();
+        String query = prefs.getString(FlickrFetchr.PREF_SEARCH_QUERY, null);
+        getActivity().startSearch(query, true, null, false);
+
+//        getActivity().onSearchRequested();
         return true;
       case R.id.menu_item_clear:
-        PreferenceManager.getDefaultSharedPreferences(getActivity())
+        prefs
             .edit().remove(FlickrFetchr.PREF_SEARCH_QUERY)
 //            .putString(FlickrFetchr.PREF_SEARCH_QUERY, null) ??
             .commit();

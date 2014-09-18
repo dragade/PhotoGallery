@@ -28,9 +28,18 @@ public class FlickrFetchr {
   private static final String EXTRA_SMALL_URL = "url_s";
   private static final String METHOD_SEARCH = "flickr.photos.search";
   private static final String PARAM_TEXT = "text";
-  private static final String XML_PHOTO = "photo";
 
-  byte[] getUrlBytes(String urlSpec) throws IOException {
+  public int getTotalResultsReadLast() {
+    return mTotalResultsReadLast;
+  }
+
+  private static final String XML_PHOTO = "photo";
+  private static final String XML_PHOTOS = "photos";
+  private static final String XML_PHOTOS_TOTAL = "total";
+
+  private int mTotalResultsReadLast = 0;
+
+  public byte[] getUrlBytes(String urlSpec) throws IOException {
     URL url = new URL(urlSpec);
     HttpURLConnection connection = (HttpURLConnection)url.openConnection();
     try {
@@ -88,22 +97,31 @@ public class FlickrFetchr {
         .build().toString();
     return downloadGalleryItems(url);
   }
-  ArrayList<GalleryItem> parseItems(XmlPullParser parser)
+
+  private ArrayList<GalleryItem> parseItems(XmlPullParser parser)
       throws XmlPullParserException, IOException {
     ArrayList<GalleryItem> items = new ArrayList<GalleryItem>();
     int eventType = parser.next();
     while (eventType != XmlPullParser.END_DOCUMENT) {
-      if (eventType == XmlPullParser.START_TAG &&
-          XML_PHOTO.equals(parser.getName())) {
-        String id = parser.getAttributeValue(null, "id");
-        String caption = parser.getAttributeValue(null, "title");
-        String smallUrl = parser.getAttributeValue(null, EXTRA_SMALL_URL);
-        GalleryItem item = new GalleryItem();
-        item.setId(id);
-        item.setCaption(caption);
-        item.setUrl(smallUrl);
-        items.add(item);
+      if (eventType == XmlPullParser.START_TAG) {
+        if (XML_PHOTOS.equals(parser.getName())) {
+          Log.d(TAG, "On xml photos " + parser.getAttributeCount() + " attributes");
+          String totalValue = parser.getAttributeValue(null, XML_PHOTOS_TOTAL);
+          mTotalResultsReadLast = Integer.parseInt(totalValue);
+          Log.d(TAG, "There are " + mTotalResultsReadLast + " images.");
+        }
+        else if (XML_PHOTO.equals(parser.getName())) {
+          String id = parser.getAttributeValue(null, "id");
+          String caption = parser.getAttributeValue(null, "title");
+          String smallUrl = parser.getAttributeValue(null, EXTRA_SMALL_URL);
+          GalleryItem item = new GalleryItem();
+          item.setId(id);
+          item.setCaption(caption);
+          item.setUrl(smallUrl);
+          items.add(item);
+        }
       }
+
       eventType = parser.next();
     }
     return items;
