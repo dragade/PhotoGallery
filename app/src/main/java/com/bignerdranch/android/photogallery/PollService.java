@@ -16,6 +16,7 @@ import android.util.Log;
 
 public class PollService extends IntentService{
   private static final String TAG = "PollService";
+  public static final String PREF_IS_ALARM_ON = "isAlarmOn";
   public static final int POLL_INTERVAL = 1000 * 60 * 1; // 5 minutes
 
   public PollService() {
@@ -80,6 +81,11 @@ public class PollService extends IntentService{
       alarmManager.cancel(pendingIntent);
       pendingIntent.cancel();
     }
+
+    PreferenceManager.getDefaultSharedPreferences(context)
+        .edit()
+        .putBoolean(PollService.PREF_IS_ALARM_ON, isOn)
+        .commit();
   }
 
   public static boolean isServiceAlarmOn(Context context) {
