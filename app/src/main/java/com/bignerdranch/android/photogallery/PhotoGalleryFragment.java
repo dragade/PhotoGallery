@@ -5,8 +5,8 @@ import android.app.SearchManager;
 import android.app.SearchableInfo;
 import android.content.ComponentName;
 import android.content.Context;
-import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -14,7 +14,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
-import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -31,7 +30,7 @@ import android.widget.Toast;
 import java.util.Collections;
 import java.util.List;
 
-public class PhotoGalleryFragment extends Fragment {
+public class PhotoGalleryFragment extends VisibleFragment {
   private static final String TAG = "PhotoGalleryFragment";
 
   GridView mGridView;
@@ -181,6 +180,14 @@ public class PhotoGalleryFragment extends Fragment {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
           getActivity().invalidateOptionsMenu();
+        }
+
+        if (shouldStartAlarm) {
+          ComponentName receiver = new ComponentName(getActivity(), StartupReceiver.class);
+          PackageManager pm = getActivity().getPackageManager();
+          pm.setComponentEnabledSetting(receiver,
+              PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+              PackageManager.DONT_KILL_APP);
         }
 
         return true;
